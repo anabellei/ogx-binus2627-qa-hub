@@ -1,0 +1,36 @@
+```gitignore
+# Dependencies
+node_modules/
+
+# Next.js build output
+.next/
+out/
+build/
+
+# Environment variables and secrets
+.env
+.env.*
+!.env.example
+
+# Deployment
+.vercel/
+
+# TypeScript
+next-env.d.ts
+*.tsbuildinfo
+
+# Debug logs
+npm-debug.log*
+yarn-debug.log*
+pnpm-debug.log*
+
+# Local settings and credentials
+.qa-hub-settings.json
+service-account*.json
+credentials*.json
+
+# OS files
+.DS_Store
+Thumbs.db
+desktop.ini
+```
