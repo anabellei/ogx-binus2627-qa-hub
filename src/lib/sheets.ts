@@ -24,6 +24,7 @@ export const sheetIdFromUrl = (u: string): string => {
   return /^[\w-]{20,}$/.test(u.trim()) ? u.trim() : "";
 };
 
+const tabMemo = new Map<string, { at: number; meta: { sheets: ApiSheet[] } }>();
 const qr = (t: string, range: string) => `ranges=${encodeURIComponent(`'${t.replace(/'/g, "''")}'!${range}`)}`;
 const norm = (s: string) => s.trim().toLowerCase();
 
@@ -34,7 +35,9 @@ export async function sheetTitles(token: string, sheetId: string): Promise<{ tit
 
 /** Read several tabs (found by name prefix, else "contains") in one request. Missing tabs come back null. */
 export async function readTabs(token: string, sheetId: string, specs: { prefix: string; range: string }[]): Promise<(Tab | null)[]> {
-  const meta = await gjson<{ sheets: ApiSheet[] }>(token, `${BASE}/${sheetId}?fields=sheets.properties(sheetId,title)`);
+  const hit = tabMemo.get(sheetId);
+  let meta = hit && Date.now() - hit.at < 5 * 60_000 ? hit.meta : null;
+  if (!meta) { meta = await gjson<{ sheets: ApiSheet[] }>(token, `${BASE}/${sheetId}?fields=sheets.properties(sheetId,title)`); tabMemo.set(sheetId, { at: Date.now(), meta }); }
   const found = specs.map((sp) => {
     const p = norm(sp.prefix);
     return meta.sheets.find((s) => norm(s.properties.title).startsWith(p)) ?? meta.sheets.find((s) => norm(s.properties.title).includes(p)) ?? null;

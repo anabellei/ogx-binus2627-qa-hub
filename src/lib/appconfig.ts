@@ -42,7 +42,13 @@ export async function getConfig(token: string, fresh = false): Promise<AppConfig
   const c = g.__gvCfgCache;
   if (!fresh && c && Date.now() - c.at < 20_000) return c.cfg;
   if (!ROOT_FOLDER_ID) throw new HttpError(500, "DRIVE_ROOT_FOLDER_ID must be set.");
-  const f = await readJsonFile<AppConfig>(token, ROOT_FOLDER_ID, FILE);
+  const f = await readJsonFile<AppConfig>(token, ROOT_FOLDER_ID, FILE).catch((e) => {
+    if (e instanceof HttpError && (e.status === 404 || e.status === 403 || e.status === 400)) {
+      const id = ROOT_FOLDER_ID;
+      throw new HttpError(400, `Can't open the main Drive folder (DRIVE_ROOT_FOLDER_ID is ${id.length} characters: "${id.slice(0, 5)}…${id.slice(-4)}"; a real folder ID is about 33). Check the value in Vercel (no spaces, quotes or extra text) and that the account you signed in with has access to that folder. Google said: ${e.message}`);
+    }
+    throw e;
+  });
   const cfg = f?.data ?? defaultConfig();
   g.__gvCfgCache = { at: Date.now(), cfg, id: f?.id ?? null };
   return cfg;

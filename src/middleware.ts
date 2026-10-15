@@ -4,7 +4,8 @@ import { getToken } from "next-auth/jwt";
 export async function middleware(req: NextRequest) {
   // Always use ONE web address. Login cookies are per-address, so starting sign-in on one
   // Vercel URL and returning on another causes "State cookie was missing".
-  const canon = process.env.NEXTAUTH_URL ? new URL(process.env.NEXTAUTH_URL) : null;
+  let canon: URL | null = null;
+  try { canon = process.env.NEXTAUTH_URL ? new URL(process.env.NEXTAUTH_URL.trim().replace(/^["']|["']$/g, "")) : null; } catch { /* ignore a malformed value */ }
   const host = (req.headers.get("x-forwarded-host") ?? req.headers.get("host") ?? "").toLowerCase();
   if (canon && host && host !== canon.host.toLowerCase() && !/^(localhost|127\.)/.test(host)) {
     const u = req.nextUrl.clone();
