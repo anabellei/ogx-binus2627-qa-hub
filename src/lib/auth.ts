@@ -3,7 +3,7 @@ import GoogleProvider from "next-auth/providers/google";
 import { getToken, type JWT } from "next-auth/jwt";
 import { cookies, headers } from "next/headers";
 import type { NextRequest } from "next/server";
-import { ALLOWED_DOMAINS, DEMO, HttpError } from "./config";
+import { ALLOWED_DOMAINS, ALLOWED_EMAILS, DEMO, HttpError } from "./config";
 
 const SCOPES = [
   "openid", "email", "profile",

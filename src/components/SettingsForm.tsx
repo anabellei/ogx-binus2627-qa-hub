@@ -98,7 +98,7 @@ export default function SettingsForm({ initial, demo }: { initial: AppConfig; de
       <section className="mt-10">
         <div className="flex items-center justify-between">
           <div><h2 className="text-lg font-semibold text-slate-900">Audits</h2><p className="text-sm text-slate-500">One per audit round. Paste the links to your copies of the audit sheets.</p></div>
-          <button onClick={() => setCfg((c) => ({ ...c, audits: [...c.audits, { id: "", label: "", quarterlyUrl: "", monthlyUrl: "", month: new Date().toISOString().slice(0, 7), ecbEmails: [] }] }))}
+          <button onClick={() => setCfg((c) => ({ ...c, audits: [...c.audits, { id: "", label: "", quarterlyUrl: "", monthlyUrl: "", folderUrl: "", month: new Date().toISOString().slice(0, 7), ecbEmails: [] }] }))}
             className="inline-flex items-center gap-1.5 rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-sm font-medium text-slate-700 hover:bg-slate-50"><Plus size={14} />Add audit</button>
         </div>
         <div className="mt-3 space-y-4">
@@ -117,6 +117,7 @@ export default function SettingsForm({ initial, demo }: { initial: AppConfig; de
                   </div>
                   <LinkField label="Quarterly audit sheet (your copy)" kind="sheet" value={a.quarterlyUrl} onChange={(v) => setA(i, { quarterlyUrl: v })} placeholder="https://docs.google.com/spreadsheets/d/…" />
                   <LinkField label="Monthly & APD control report (your copy)" kind="sheet" value={a.monthlyUrl} onChange={(v) => setA(i, { monthlyUrl: v })} placeholder="https://docs.google.com/spreadsheets/d/…" />
+                  <LinkField label="Drive folder for the audit files (optional)" kind="folder" value={a.folderUrl ?? ""} onChange={(v) => setA(i, { folderUrl: v })} placeholder="https://drive.google.com/drive/folders/…" hint="Files go to <this folder>/Audit/<audit name>/… . Leave empty to use the main folder. “Share with ECB” only shares the audit-name folder." />
                   <Text label="ECB emails that must have access (comma separated)" value={a.ecbEmails.join(", ")} onChange={(v) => setA(i, { ecbEmails: v.split(",").map((x) => x.trim()) })} placeholder="ecb.idn@aiesec.net, ecbidn.ac@aiesec.net" />
                   {a.submitted && <p className="text-xs font-medium text-emerald-700">Submitted and locked. Unlock it from the audit page if needed.</p>}
                 </div>

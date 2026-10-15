@@ -138,7 +138,15 @@ async function writeAudit(token: string, env: AuditEnv, which: "q" | "m", ops: C
   await writeOps(token, t.sheetId, { real: t.tab!.sheetId, prep: -1 }, ops);
 }
 
-const auditFolder = async (token: string, a: AuditCfg) => drive.ensurePath(token, ROOT_FOLDER_ID, ["Audit", sanitize(a.label)]);
+const auditFolder = async (token: string, a: AuditCfg) => {
+  let base = ROOT_FOLDER_ID;
+  if (a.folderUrl) {
+    base = drive.driveIdFromUrl(a.folderUrl);
+    if (!base) throw new HttpError(400, "The audit folder link in Settings isn't a valid Drive folder link.");
+    await drive.getMeta(token, base).catch(() => { throw new HttpError(400, "Can't open the audit folder from Settings. Check the link and that you have edit access."); });
+  }
+  return drive.ensurePath(token, base, ["Audit", sanitize(a.label)]);
+};
 const guard = (a: AuditCfg) => { if (a.submitted) throw new HttpError(403, "This audit is marked as submitted, so it is locked. Unlock it first if you really need to change something."); };
 
 export interface FillInput { auditId: string; product?: string | null; ep: string; slot: string; items?: string[]; urls?: string[] }

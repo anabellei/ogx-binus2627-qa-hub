@@ -44,6 +44,16 @@ Set up in Settings: audit name, **audit month**, link to your copy of the quarte
 - **Mark as submitted**: locks changes in the app (not in Drive/Sheets).
 - Suggestions (which tracker item usually answers which requirement) are in `src/lib/audit-map.ts`; edit freely.
 
+## Adding teammates
+1. **Google permissions** (this is what actually controls access, the app acts as each person): give them *Editor* on the tracker sheets, the audit sheets, and the main Drive folder.
+2. **Let them sign in** (Google Cloud → OAuth consent screen):
+   - Workspace accounts → set the app to **Internal**, nothing else needed.
+   - Personal Gmail → **External**. While the app is in *Testing*, add each person under *Test users* (max 100) and note that Google expires their login every 7 days. To avoid weekly re-login, click **Publish app** (In production). No verification needed for up to 100 users; they see an "unverified app" screen once: Advanced → Go to app.
+3. **Optional lock-down**: set `ALLOWED_EMAILS` (and/or `ALLOWED_EMAIL_DOMAINS`) in Vercel so only your team can sign in.
+
+## If sign-in fails on Vercel ("State cookie was missing")
+Login cookies belong to ONE web address. Make sure `NEXTAUTH_URL` is exactly your production address (`https://your-app.vercel.app`, https, no trailing slash), the same address is in Google's *Authorized redirect URIs* (`…/api/auth/callback/google`), then **redeploy** (env changes only apply to new deployments). The app also redirects any other Vercel address to `NEXTAUTH_URL` automatically.
+
 ## Deploy to Vercel
 Push to GitHub → import → add the env vars → set `NEXTAUTH_URL` to the Vercel URL → add the Vercel callback URL to the OAuth client.
 Large files are uploaded in 4 MB chunks to fit Vercel's request limit.
