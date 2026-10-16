@@ -32,7 +32,7 @@ export default async function AuditHome() {
                   <div className="font-semibold text-slate-900 group-hover:text-brand-700">{a.label}</div>
                   {a.submitted && <span className="inline-flex items-center gap-1 rounded-full bg-emerald-50 px-2 py-0.5 text-[11px] font-medium text-emerald-700"><Lock size={11} />Submitted</span>}
                 </div>
-                <div className="mt-1 text-sm text-slate-500">{windowFor(a.month).label}</div>
+                <div className="mt-1 text-sm text-slate-500">{windowFor(a.year, a.quarter).label}</div>
                 <div className="mt-4 flex items-center gap-1 text-sm font-medium text-brand-700">Open <ArrowRight size={14} className="transition group-hover:translate-x-0.5" /></div>
               </Link>
             </li>

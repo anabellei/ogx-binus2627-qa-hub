@@ -38,3 +38,9 @@ export const PREP_IGNORE = ["insurancetype"];
 
 /** New uploads go into this sub-folder of each EP's existing folder, so they never mix with EPM-made folders. "" = directly in the EP folder. */
 export const APP_SUBFOLDER = "QA Hub";
+
+/**
+ * Documents that are NOT required: they can be uploaded, but never count as "missing" and don't affect progress.
+ * (norm()-ed names; "(if change)" rows are handled separately via "No difference".)
+ */
+export const OPTIONAL_ITEMS = ["volunteerworkingtimeline", "letterforuniversity", "letterfromuniversity"];

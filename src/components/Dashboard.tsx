@@ -1,7 +1,7 @@
 "use client";
 import Link from "next/link";
 import { useMemo, useState } from "react";
-import { AlertTriangle, ChevronDown, ExternalLink, Search, Info } from "lucide-react";
+import { AlertTriangle, ChevronDown, ExternalLink, Search, Info, PauseCircle } from "lucide-react";
 import type { EpView } from "@/lib/types";
 import { STAGE_LABEL } from "@/lib/types";
 import { Avatar, Bar, Chip, cn, pctOf } from "./ui";
@@ -13,22 +13,25 @@ export default function Dashboard({ eps, warnings, sheetUrl, product }: { eps: E
   const [resp, setResp] = useState("All");
   const [sort, setSort] = useState<Sort>("attention");
   const [showWarn, setShowWarn] = useState(false);
+  const [hideBreak, setHideBreak] = useState(false);
 
   const responsibles = useMemo(() => ["All", ...Array.from(new Set(eps.map((e) => e.responsible))).sort()], [eps]);
   const totals = useMemo(() => {
-    const done = eps.reduce((a, e) => a + e.done, 0), total = eps.reduce((a, e) => a + e.total, 0);
-    return { done, total, missing: total - done, attention: eps.reduce((a, e) => a + e.attention, 0) };
+    const active = eps.filter((e) => !e.onBreak); // EPs on break don't count toward any totals
+    const done = active.reduce((a, e) => a + e.done, 0), total = active.reduce((a, e) => a + e.total, 0);
+    return { done, total, missing: total - done - active.reduce((a, e) => a + e.attention, 0), attention: active.reduce((a, e) => a + e.attention, 0), active: active.length, onBreak: eps.length - active.length };
   }, [eps]);
 
   const list = useMemo(() => {
     const t = q.trim().toLowerCase();
-    const f = eps.filter((e) => (resp === "All" || e.responsible === resp) && (!t || `${e.name} ${e.hostLC} ${e.program}`.toLowerCase().includes(t)));
+    const f = eps.filter((e) => (resp === "All" || e.responsible === resp) && !(hideBreak && e.onBreak) && (!t || `${e.name} ${e.hostLC} ${e.program}`.toLowerCase().includes(t)));
     const p = (e: EpView) => pctOf(e.done, e.total);
     return [...f].sort((a, b) =>
-      sort === "name" ? a.name.localeCompare(b.name)
+      a.onBreak !== b.onBreak ? Number(a.onBreak) - Number(b.onBreak) // EPs on break always last
+      : sort === "name" ? a.name.localeCompare(b.name)
       : sort === "progress" ? p(a) - p(b)
       : (b.total - b.done) - (a.total - a.done));
-  }, [eps, q, resp, sort]);
+  }, [eps, q, resp, sort, hideBreak]);
 
   return (
     <div className="mx-auto max-w-6xl px-4 py-6">
@@ -43,9 +46,9 @@ export default function Dashboard({ eps, warnings, sheetUrl, product }: { eps: E
       </div>
 
       <div className="mt-5 grid grid-cols-2 gap-3 sm:grid-cols-4">
-        <Stat label="EPs" value={eps.length} />
+        <Stat label={totals.onBreak ? `Active EPs (+${totals.onBreak} on break)` : "EPs"} value={totals.active} />
         <Stat label="Overall complete" value={`${pctOf(totals.done, totals.total)}%`} />
-        <Stat label="Items missing" value={totals.missing} />
+        <Stat label="Documents missing" value={totals.missing} hint="Optional documents and EPs on break are not counted" />
         <Stat label="Need attention" value={totals.attention} tone={totals.attention ? "amber" : undefined} hint="Ticked without a file, or file without a tick" />
       </div>
 
@@ -72,6 +75,11 @@ export default function Dashboard({ eps, warnings, sheetUrl, product }: { eps: E
               className={cn("rounded-full border px-3 py-1 text-xs font-medium transition", resp === r ? "border-brand-600 bg-brand-600 text-white" : "border-slate-200 bg-white text-slate-600 hover:bg-slate-50")}>{r}</button>
           ))}
         </div>
+        {totals.onBreak > 0 && (
+          <label className="flex cursor-pointer select-none items-center gap-2 text-xs text-slate-600">
+            <input type="checkbox" checked={hideBreak} onChange={(e) => setHideBreak(e.target.checked)} className="h-4 w-4 rounded border-slate-300" /> Hide EPs on break
+          </label>
+        )}
         <label className="ml-auto flex items-center gap-2 text-xs text-slate-500">Sort
           <select value={sort} onChange={(e) => setSort(e.target.value as Sort)} className="rounded-lg border border-slate-200 bg-white px-2 py-1.5 text-sm text-slate-700">
             <option value="attention">Most missing first</option>
@@ -102,16 +110,17 @@ function Stat({ label, value, tone, hint }: { label: string; value: string | num
 }
 
 function EpCard({ ep, product }: { ep: EpView; product: string }) {
-  const pct = pctOf(ep.done, ep.total), missing = ep.total - ep.done;
+  const pct = pctOf(ep.done, ep.total), missing = ep.total - ep.done - ep.attention, complete = ep.done === ep.total;
   return (
-    <Link href={`/ep/${ep.key}?p=${product}`} className="group block rounded-2xl border border-slate-200 bg-white p-4 shadow-sm transition hover:-translate-y-0.5 hover:border-brand-200 hover:shadow-md">
+    <Link href={`/ep/${ep.key}?p=${product}`} className={cn("group block rounded-2xl border border-slate-200 p-4 shadow-sm transition hover:-translate-y-0.5 hover:border-brand-200 hover:shadow-md", ep.onBreak ? "bg-slate-50" : "bg-white")}>
       <div className="flex items-start justify-between gap-2">
         <div className="min-w-0">
           <div className="truncate font-semibold text-slate-900 group-hover:text-brand-700">{ep.name}</div>
           <div className="mt-0.5 truncate text-xs text-slate-500">{[ep.hostLC, ep.program].filter(Boolean).join(" · ")}</div>
         </div>
-        <div className="text-right"><div className="text-xl font-bold leading-none text-slate-900">{pct}%</div></div>
+        <div className="text-right">{ep.onBreak ? <PauseCircle className="text-violet-400" size={22} aria-label="On break" /> : <div className="text-xl font-bold leading-none text-slate-900">{pct}%</div>}</div>
       </div>
+      {ep.onBreak ? <p className="mt-3 rounded-lg bg-violet-50 px-3 py-2 text-xs text-violet-700">On break: documents aren't counted ({ep.done}/{ep.total} uploaded).</p> : <>
       <Bar done={ep.done} total={ep.total} className="mt-3" />
       <div className="mt-3 grid grid-cols-3 gap-2">
         {(["preparation", "experience", "post"] as const).map((s) => (
@@ -121,13 +130,13 @@ function EpCard({ ep, product }: { ep: EpView; product: string }) {
             <div className="mt-0.5 text-[11px] text-slate-500">{ep.stages[s].done}/{ep.stages[s].total}</div>
           </div>
         ))}
-      </div>
+      </div></>}
       <div className="mt-3 flex items-center justify-between border-t border-slate-100 pt-3">
         <span className="flex min-w-0 items-center gap-1.5 text-xs text-slate-600"><Avatar name={ep.responsible} size={20} /><span className="truncate">{ep.responsible}</span></span>
         <span className="flex items-center gap-1.5">
           {ep.breakTag && <Chip tone="violet">{ep.breakTag}</Chip>}
-          {ep.attention > 0 && <Chip tone="amber"><AlertTriangle size={11} />{ep.attention}</Chip>}
-          <Chip tone={missing === 0 ? "green" : "slate"}>{missing === 0 ? "Complete" : `${missing} missing`}</Chip>
+          {!ep.onBreak && ep.attention > 0 && <Chip tone="amber"><AlertTriangle size={11} />{ep.attention}</Chip>}
+          {!ep.onBreak && (complete || missing > 0) && <Chip tone={complete ? "green" : "slate"}>{complete ? "Complete" : `${missing} missing`}</Chip>}
         </span>
       </div>
     </Link>

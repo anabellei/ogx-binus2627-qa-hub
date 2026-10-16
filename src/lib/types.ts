@@ -20,6 +20,7 @@ export interface ItemDef {
   multi: boolean; // accepts several files (stored in its own subfolder)
   optional: boolean; // "(if change)" rows: can be marked "No difference"
   creditOnly: boolean;
+  required: boolean; // false = optional document: never counted as missing
   inRealization: boolean;
   mirrorsPrep: boolean; // one upload also fills the Preparation tab
 }
@@ -44,6 +45,7 @@ export interface EpView {
   hostLC: string;
   credit: boolean;
   hasPrep: boolean;
+  onBreak: boolean; // BREAK RE / BREAK APD: documents do not count toward progress or "missing"
   states: Record<string, ItemState>;
   done: number;
   total: number;

@@ -6,15 +6,14 @@ import { sanitize as clean } from "./naming";
 export const MONTHS = ["JAN", "FEB", "MAR", "APR", "MAY", "JUN", "JUL", "AUG", "SEP", "OCT", "NOV", "DEC"];
 const MONTH_NAMES = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
 
-/* ---------- audit window: the audit month and the two before it ---------- */
+/* ---------- audit window: calendar quarters (Q1 Jan-Mar, Q2 Apr-Jun, Q3 Jul-Sep, Q4 Oct-Dec) ---------- */
 export interface AuditWindow { start: string; end: string; tags: string[]; label: string }
-export function windowFor(month: string): AuditWindow {
-  const [y, m] = month.split("-").map(Number);
-  const s = new Date(Date.UTC(y, m - 3, 1)), e = new Date(Date.UTC(y, m, 0));
-  const tags = [0, 1, 2].map((i) => MONTHS[new Date(Date.UTC(y, m - 3 + i, 1)).getUTCMonth()]);
+export function windowFor(year: number, quarter: number): AuditWindow {
+  const q = Math.min(4, Math.max(1, Math.round(quarter) || 1)), m0 = (q - 1) * 3;
+  const s = new Date(Date.UTC(year, m0, 1)), e = new Date(Date.UTC(year, m0 + 3, 0));
   return {
-    start: s.toISOString().slice(0, 10), end: e.toISOString().slice(0, 10), tags,
-    label: `${MONTH_NAMES[s.getUTCMonth()]} – ${MONTH_NAMES[e.getUTCMonth()]} ${e.getUTCFullYear()}`,
+    start: s.toISOString().slice(0, 10), end: e.toISOString().slice(0, 10), tags: [0, 1, 2].map((i) => MONTHS[m0 + i]),
+    label: `Q${q} ${year} (${MONTH_NAMES[m0]} – ${MONTH_NAMES[m0 + 2]})`,
   };
 }
 

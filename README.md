@@ -23,14 +23,18 @@ See `.env.example`. Required: `NEXTAUTH_URL`, `NEXTAUTH_SECRET`, `GOOGLE_CLIENT_
 Sign in → **Settings** → add your products (GV, GTa): name + tracker sheet link + the product's Drive folder link → **Check** each link → Save.
 Settings are stored in `_qa-hub-settings.json` inside the main folder, so they survive redeploys.
 
+## Counting rules (Exchange QA)
+- **Break status**: an EP whose name starts with `[BREAK RE]` / `[BREAK APD]` in the Realization tab is shown as "On break". Their documents are not counted: not in the EP's progress, not in the dashboard totals, not as "missing". They can still upload.
+- **Optional documents** never count as missing and don't affect progress: Volunteer working timeline, Letter for University, Letter from University. Edit the list (`OPTIONAL_ITEMS`) in `src/lib/catalog.ts`.
+
 ## Existing Drive folders (adopted, not reorganised)
 - The app finds each EP's folder by name (`01. Melina Patricia`, `03. Nicolas Khristanto (BREAK RE)` ... numbers and brackets are ignored, spelling can differ slightly). If none exists it creates `NN. Name (TAG)`.
 - Files you already have stay exactly where they are. The tracker's links are the source of truth, so nothing breaks.
 - **New** uploads go to `<EP folder>/QA Hub/<stage>/<standard>/…`, so they never mix with the folders each EPM made. (Change `APP_SUBFOLDER` in `src/lib/catalog.ts`; empty = directly in the EP folder.)
 
 ## Audit
-Set up in Settings: audit name, **audit month**, link to your copy of the quarterly audit sheet, link to your copy of the monthly/APD report, ECB emails.
-- **Window** = the audit month and the 2 before it (October → Aug, Sep, Oct). Month tags `[AUG]` `[SEP]` `[OCT]` come from this.
+Set up in Settings: audit name, **year + quarter**, link to your copy of the quarterly audit sheet, link to your copy of the monthly/APD report, ECB emails.
+- **Window** = the calendar quarter you pick in Settings: Q1 Jan–Mar, Q2 Apr–Jun, Q3 Jul–Sep, Q4 Oct–Dec. Month tags (`[JUL]` `[AUG]` `[SEP]`…) come from this.
 - **Checklist per EP, per block** (read from the sheet):
   - Block date inside the window → **due**, tagged with the month of that date (APD/General blocks use the Approved date, Realized uses Realized, Finished uses Finished).
   - Date after the window (or missing) → **next quarter**. One click writes "Next Quarter" into the empty cells.

@@ -98,7 +98,7 @@ export default function SettingsForm({ initial, demo }: { initial: AppConfig; de
       <section className="mt-10">
         <div className="flex items-center justify-between">
           <div><h2 className="text-lg font-semibold text-slate-900">Audits</h2><p className="text-sm text-slate-500">One per audit round. Paste the links to your copies of the audit sheets.</p></div>
-          <button onClick={() => setCfg((c) => ({ ...c, audits: [...c.audits, { id: "", label: "", quarterlyUrl: "", monthlyUrl: "", folderUrl: "", month: new Date().toISOString().slice(0, 7), ecbEmails: [] }] }))}
+          <button onClick={() => setCfg((c) => ({ ...c, audits: [...c.audits, { id: "", label: "", quarterlyUrl: "", monthlyUrl: "", folderUrl: "", year: new Date().getFullYear(), quarter: (Math.floor(new Date().getMonth() / 3) + 1) as 1 | 2 | 3 | 4, ecbEmails: [] }] }))}
             className="inline-flex items-center gap-1.5 rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-sm font-medium text-slate-700 hover:bg-slate-50"><Plus size={14} />Add audit</button>
         </div>
         <div className="mt-3 space-y-4">
@@ -109,11 +109,18 @@ export default function SettingsForm({ initial, demo }: { initial: AppConfig; de
                 <div className="grid flex-1 gap-3">
                   <div className="grid gap-3 sm:grid-cols-2">
                     <Text label="Name" value={a.label} onChange={(v) => setA(i, { label: v })} placeholder="Q3 2026 audit" />
-                    <label className="block">
-                      <span className="text-xs font-medium text-slate-600">Audit month</span>
-                      <input type="month" value={a.month} onChange={(e) => setA(i, { month: e.target.value })} className="mt-1 w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm" />
-                      <span className="mt-1 block text-xs text-slate-400">Covers this month and the 2 before it (October → Aug, Sep, Oct).</span>
-                    </label>
+                    <div className="grid grid-cols-[1fr_1.4fr] gap-3">
+                      <label className="block">
+                        <span className="text-xs font-medium text-slate-600">Year</span>
+                        <input type="number" min={2020} max={2100} value={a.year} onChange={(e) => setA(i, { year: Number(e.target.value) })} className="mt-1 w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm" />
+                      </label>
+                      <label className="block">
+                        <span className="text-xs font-medium text-slate-600">Quarter</span>
+                        <select value={a.quarter} onChange={(e) => setA(i, { quarter: Number(e.target.value) as 1 | 2 | 3 | 4 })} className="mt-1 w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm">
+                          <option value={1}>Q1 · Jan – Mar</option><option value={2}>Q2 · Apr – Jun</option><option value={3}>Q3 · Jul – Sep</option><option value={4}>Q4 · Oct – Dec</option>
+                        </select>
+                      </label>
+                    </div>
                   </div>
                   <LinkField label="Quarterly audit sheet (your copy)" kind="sheet" value={a.quarterlyUrl} onChange={(v) => setA(i, { quarterlyUrl: v })} placeholder="https://docs.google.com/spreadsheets/d/…" />
                   <LinkField label="Monthly & APD control report (your copy)" kind="sheet" value={a.monthlyUrl} onChange={(v) => setA(i, { monthlyUrl: v })} placeholder="https://docs.google.com/spreadsheets/d/…" />

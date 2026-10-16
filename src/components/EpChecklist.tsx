@@ -3,7 +3,7 @@ import Link from "next/link";
 import { useCallback, useMemo, useRef, useState } from "react";
 import {
   AlertTriangle, ArrowLeft, CheckCircle2, Circle, ExternalLink, FileUp, Layers, Link2,
-  Loader2, MinusCircle, RefreshCw, Search, Undo2, UploadCloud, X, Check, Ban,
+  Loader2, MinusCircle, RefreshCw, Search, Undo2, UploadCloud, X, Check, Ban, PauseCircle, CircleDashed,
 } from "lucide-react";
 import type { EpView, ItemDef, ItemState, StageKey } from "@/lib/types";
 import { MAX_FILE_BYTES, STAGE_LABEL, STAGE_ORDER } from "@/lib/types";
@@ -79,7 +79,7 @@ export default function EpChecklist({ initial, items, sheetUrl, product }: { ini
     return items.filter((i) => {
       const s = ep.states[i.key]; if (!s) return false;
       if (stage !== "all" && i.stage !== stage) return false;
-      if (missingOnly && (s.status === "done" || s.status === "nodiff")) return false;
+      if (missingOnly && (s.status === "done" || s.status === "nodiff" || (!i.required && s.status === "missing"))) return false;
       if (t && !`${i.label} ${i.standard}`.toLowerCase().includes(t)) return false;
       return true;
     });
@@ -105,7 +105,9 @@ export default function EpChecklist({ initial, items, sheetUrl, product }: { ini
       <Link href={`/?p=${product}`} className="inline-flex items-center gap-1.5 text-sm text-slate-500 hover:text-slate-800"><ArrowLeft size={15} /> All EPs</Link>
 
       <div className="mt-3 flex flex-wrap items-center gap-5 rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
-        <Ring pct={pct} />
+        {ep.onBreak
+          ? <div className="grid h-[84px] w-[84px] shrink-0 place-items-center rounded-full bg-violet-50 text-violet-500" title="On break"><PauseCircle size={34} /></div>
+          : <Ring pct={pct} />}
         <div className="min-w-0 flex-1">
           <div className="flex flex-wrap items-center gap-2">
             <h1 className="text-xl font-bold text-slate-900 sm:text-2xl">{ep.name}</h1>
@@ -117,8 +119,9 @@ export default function EpChecklist({ initial, items, sheetUrl, product }: { ini
           </div>
           <div className="mt-3 flex flex-wrap gap-2 text-xs">
             <Chip tone="green"><Check size={11} />{ep.done} done</Chip>
-            <Chip>{ep.total - ep.done - ep.attention} missing</Chip>
-            {ep.attention > 0 && <Chip tone="amber"><AlertTriangle size={11} />{ep.attention} need attention</Chip>}
+            {ep.onBreak ? <Chip tone="violet">On break · documents don't count</Chip> : <>
+              <Chip>{ep.total - ep.done - ep.attention} missing</Chip>
+              {ep.attention > 0 && <Chip tone="amber"><AlertTriangle size={11} />{ep.attention} need attention</Chip>}</>}
             {!ep.hasPrep && <Chip tone="amber" title="No matching column on the Preparation tab">No Preparation-tab column</Chip>}
           </div>
         </div>
@@ -129,6 +132,8 @@ export default function EpChecklist({ initial, items, sheetUrl, product }: { ini
           <a href={sheetUrl} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1.5 rounded-lg border border-slate-200 px-3 py-1.5 text-sm text-slate-600 hover:bg-slate-50">Sheet <ExternalLink size={13} /></a>
         </div>
       </div>
+
+      {ep.onBreak && <p className="mt-3 rounded-lg bg-violet-50 px-3 py-2 text-sm text-violet-800">This EP is on break ({ep.breakTag}), so their documents aren't counted as missing and don't affect the totals. You can still upload if you need to.</p>}
 
       <div className="sticky top-14 z-20 -mx-4 mt-4 border-b border-slate-200 bg-slate-50/90 px-4 py-3 backdrop-blur">
         <div className="flex flex-wrap items-center gap-2">
@@ -158,7 +163,8 @@ export default function EpChecklist({ initial, items, sheetUrl, product }: { ini
       ) : (
         <div className="mt-4 space-y-6">
           {groups.map((g) => {
-            const d = g.items.filter((i) => ["done", "nodiff"].includes(ep.states[i.key].status)).length;
+            const req = g.items.filter((i) => i.required);
+            const d = req.filter((i) => ["done", "nodiff"].includes(ep.states[i.key].status)).length;
             return (
               <section key={g.stage + g.standard} aria-labelledby={`h-${g.stage}-${g.standard}`}>
                 <div className="mb-2 flex items-center gap-3 px-1">
@@ -166,7 +172,7 @@ export default function EpChecklist({ initial, items, sheetUrl, product }: { ini
                     <div className="text-[10px] font-semibold uppercase tracking-wider text-slate-400">{STAGE_LABEL[g.stage]}</div>
                     <h2 id={`h-${g.stage}-${g.standard}`} className="truncate text-sm font-semibold text-slate-800">{g.standard.replace(/^0/, "#")}</h2>
                   </div>
-                  <div className="ml-auto flex w-28 items-center gap-2"><Bar done={d} total={g.items.length} className="h-1.5" /><span className="text-xs text-slate-500">{d}/{g.items.length}</span></div>
+                  {req.length > 0 ? <div className="ml-auto flex w-28 items-center gap-2"><Bar done={d} total={req.length} className="h-1.5" /><span className="text-xs text-slate-500">{d}/{req.length}</span></div> : <span className="ml-auto text-xs text-slate-400">optional</span>}
                 </div>
                 <ul className="divide-y divide-slate-100 overflow-hidden rounded-xl border border-slate-200 bg-white">
                   {g.items.map((i) => (
@@ -201,7 +207,8 @@ function ItemRow({ item, state, ep, busy, onFiles, onMark }: {
   const [over, setOver] = useState(false);
   const input = useRef<HTMLInputElement>(null);
   const done = state.status === "done", nodiff = state.status === "nodiff", att = state.status === "attention";
-  const Icon = done ? CheckCircle2 : nodiff ? MinusCircle : att ? AlertTriangle : Circle;
+  const optionalMissing = !item.required && state.status === "missing";
+  const Icon = done ? CheckCircle2 : nodiff ? MinusCircle : att ? AlertTriangle : optionalMissing ? CircleDashed : Circle;
   const iconCls = done ? "text-emerald-500" : nodiff ? "text-violet-400" : att ? "text-amber-500" : "text-slate-300";
   const canUpload = !nodiff;
   const verb = item.multi ? (state.link ? "Add files" : "Upload") : state.link ? "Replace" : "Upload";
@@ -225,6 +232,7 @@ function ItemRow({ item, state, ep, busy, onFiles, onMark }: {
               : <Chip tone="green" title="One upload fills both tabs"><Link2 size={11} />+ Prep tab</Chip>
           )}
           {nodiff && <Chip tone="violet">No difference</Chip>}
+          {!item.required && <Chip tone="slate" title="Optional: never counted as missing">Optional</Chip>}
         </div>
         {att && state.note && <div className="mt-0.5 text-xs text-amber-700">{state.note}</div>}
         {!done && !nodiff && !att && !busy && (
@@ -267,7 +275,7 @@ function ItemRow({ item, state, ep, busy, onFiles, onMark }: {
               onChange={(e) => { const f = Array.from(e.target.files ?? []); e.target.value = ""; onFiles(f); }} />
             <button disabled={!!busy} onClick={() => input.current?.click()}
               className={cn("inline-flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-semibold transition disabled:opacity-50",
-                state.link ? "border border-slate-200 bg-white text-slate-700 hover:bg-slate-50" : "bg-brand-600 text-white hover:bg-brand-700")}>
+                state.link || !item.required ? "border border-slate-200 bg-white text-slate-700 hover:bg-slate-50" : "bg-brand-600 text-white hover:bg-brand-700")}>
               {state.link ? <FileUp size={13} /> : <UploadCloud size={13} />}{verb}
             </button>
           </>

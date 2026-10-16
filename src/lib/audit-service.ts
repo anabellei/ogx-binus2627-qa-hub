@@ -26,7 +26,7 @@ export async function loadAudit(token: string, auditId: string, productKey?: str
   const audit = cfg.audits.find((a) => a.id === auditId);
   if (!audit) throw new HttpError(404, "That audit setup doesn't exist. Open Audit → Settings.");
   const pc = await productCtx(token, productKey);
-  const env: AuditEnv = { audit, pc, w: windowFor(audit.month), ecb: audit.ecbEmails, q: { tab: null, parsed: null, sheetId: "" }, m: { tab: null, parsed: null, sheetId: "" } };
+  const env: AuditEnv = { audit, pc, w: windowFor(audit.year, audit.quarter), ecb: audit.ecbEmails, q: { tab: null, parsed: null, sheetId: "" }, m: { tab: null, parsed: null, sheetId: "" } };
 
   if (DEMO) {
     const d = demoAudit();

@@ -10,7 +10,7 @@ export interface ProductCfg {
 export interface AuditCfg {
   id: string; label: string; quarterlyUrl: string; monthlyUrl: string;
   folderUrl: string; // optional Drive folder to build "Audit/<name>/…" in (default: the main folder)
-  month: string; // YYYY-MM = the month the audit happens; window = that month and the 2 before
+  year: number; quarter: 1 | 2 | 3 | 4; // calendar quarter being audited (Q3 = Jul–Sep)
   ecbEmails: string[]; submitted?: boolean;
 }
 export interface AppConfig { products: ProductCfg[]; audits: AuditCfg[] }
@@ -19,7 +19,15 @@ const FILE = "_qa-hub-settings.json";
 const g = globalThis as unknown as { __gvCfg?: AppConfig; __gvCfgCache?: { at: number; cfg: AppConfig; id: string | null } };
 
 const slug = (s: string) => s.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "");
-const thisMonth = () => new Date().toISOString().slice(0, 7);
+const now = () => { const d = new Date(); return { year: d.getUTCFullYear(), quarter: (Math.floor(d.getUTCMonth() / 3) + 1) as 1 | 2 | 3 | 4 }; };
+/** Reads year/quarter; older saved settings only had a "month", so fall back to the quarter that month is in. */
+function quarterOf(a: Partial<AuditCfg> & { month?: string }): { year: number; quarter: 1 | 2 | 3 | 4 } {
+  const legacy = /^(\d{4})-(\d{2})$/.exec(a.month ?? "");
+  const year = Number(a.year) >= 2020 && Number(a.year) <= 2100 ? Number(a.year) : legacy ? Number(legacy[1]) : now().year;
+  const q = Number(a.quarter);
+  const quarter = (q >= 1 && q <= 4 ? q : legacy ? Math.ceil(Number(legacy[2]) / 3) : now().quarter) as 1 | 2 | 3 | 4;
+  return { year, quarter };
+}
 
 export function defaultConfig(): AppConfig {
   if (DEMO) {
@@ -28,7 +36,7 @@ export function defaultConfig(): AppConfig {
         { key: "gv", label: "GV", sheetUrl: "demo", folderUrl: "", realPrefix: "3.0", prepPrefix: "2.1", auditTab: "OGV" },
         { key: "gta", label: "GTa", sheetUrl: "demo", folderUrl: "", realPrefix: "3.0", prepPrefix: "2.1", auditTab: "OGTa" },
       ],
-      audits: [{ id: "demo-q3", label: "Q3 2026 audit (Aug – Oct)", quarterlyUrl: "demo", monthlyUrl: "demo", folderUrl: "", month: "2026-10", ecbEmails: ["ecb.idn@aiesec.net", "ecbidn.ac@aiesec.net"] }],
+      audits: [{ id: "demo-q3", label: "Q3 2026 audit", quarterlyUrl: "demo", monthlyUrl: "demo", folderUrl: "", year: 2026, quarter: 3, ecbEmails: ["ecb.idn@aiesec.net", "ecbidn.ac@aiesec.net"] }],
     };
   }
   return {
@@ -49,7 +57,7 @@ export async function getConfig(token: string, fresh = false): Promise<AppConfig
     }
     throw e;
   });
-  const cfg = f?.data ?? defaultConfig();
+  const cfg = f?.data ? { ...f.data, audits: f.data.audits.map((a) => ({ ...a, ...quarterOf(a) })) } : defaultConfig();
   g.__gvCfgCache = { at: Date.now(), cfg, id: f?.id ?? null };
   return cfg;
 }
@@ -67,7 +75,7 @@ export function sanitize(input: AppConfig, prev: AppConfig): AppConfig {
   const audits = (input.audits ?? []).filter((a) => a.label?.trim()).map((a) => ({
     id: a.id || `a-${Date.now().toString(36)}${Math.random().toString(36).slice(2, 5)}`,
     label: a.label.trim(), quarterlyUrl: (a.quarterlyUrl ?? "").trim(), monthlyUrl: (a.monthlyUrl ?? "").trim(), folderUrl: (a.folderUrl ?? "").trim(),
-    month: /^\d{4}-\d{2}$/.test(a.month) ? a.month : thisMonth(),
+    ...quarterOf(a),
     ecbEmails: (a.ecbEmails ?? []).map((e) => e.trim()).filter((e) => /^\S+@\S+\.\S+$/.test(e)),
     submitted: prev.audits.find((x) => x.id === a.id)?.submitted, // only changed via the Submit action
   }));

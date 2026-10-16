@@ -1,4 +1,4 @@
-import { ALIAS_GROUPS, MULTI_FILE_PREFIXES, PREP_IGNORE, PREP_MAP, norm } from "./catalog";
+import { ALIAS_GROUPS, MULTI_FILE_PREFIXES, OPTIONAL_ITEMS, PREP_IGNORE, PREP_MAP, norm } from "./catalog";
 import { itemSlug, shortNames } from "./naming";
 import {
   EpView, ItemDef, ItemState, STAGE_ORDER, StageKey, Status,
@@ -100,7 +100,7 @@ export function parseTracker(real: Grid, prep: Grid): Parsed {
       folder: [curStage.folder, standard.replace(/[\\/:*?"<>|]/g, "-")],
       owner, multi: MULTI_FILE_PREFIXES.some((p) => n.startsWith(p)),
       optional: /^\(if change\)/i.test(label), creditOnly: false,
-      inRealization: true, mirrorsPrep: false, realRow: r,
+      required: !OPTIONAL_ITEMS.includes(n), inRealization: true, mirrorsPrep: false, realRow: r,
     });
   }
 
@@ -149,7 +149,7 @@ export function parseTracker(real: Grid, prep: Grid): Parsed {
     items.push({
       key, label: pr.label, slug: itemSlug(pr.label), stage: "general",
       standard: "Preparation documents", folder: ["00 General", "Preparation documents"],
-      multi: false, optional: false, creditOnly: pr.creditOnly, inRealization: false,
+      multi: false, optional: false, creditOnly: pr.creditOnly, required: !OPTIONAL_ITEMS.includes(k), inRealization: false,
       mirrorsPrep: false, prepRow: pr.row,
     });
   }
@@ -225,7 +225,7 @@ export function computeEps(parsed: Parsed, real: Grid, prep: Grid): EpView[] {
     const stages = Object.fromEntries(STAGE_ORDER.map((s) => [s, { done: 0, total: 0 }])) as EpView["stages"];
     let done = 0, total = 0, attention = 0;
     for (const it of parsed.items) {
-      const s = states[it.key]; if (!s) continue;
+      const s = states[it.key]; if (!s || !it.required) continue; // optional documents never count
       total++; stages[it.stage].total++;
       if (s.status === "done" || s.status === "nodiff") { done++; stages[it.stage].done++; }
       if (s.status === "attention") attention++;
@@ -233,7 +233,7 @@ export function computeEps(parsed: Parsed, real: Grid, prep: Grid): EpView[] {
     return {
       key: ep.key, name: ep.name, short: ep.short, breakTag: ep.breakTag, number: ep.number,
       responsible: ep.responsible, program: ep.program, hostLC: ep.hostLC, credit: ep.credit,
-      hasPrep: ep.prepCol !== undefined, states, done, total, attention, stages,
+      hasPrep: ep.prepCol !== undefined, onBreak: /^break/i.test(ep.breakTag ?? ""), states, done, total, attention, stages,
     };
   });
 }
